@@ -5,16 +5,27 @@ import TaskList from './components/TaskList';
 
 function App() {
   const [tasks, setTasks] = useState([]);
+  const [priority, setPriority] = useState('Medium'); // Default priority
   const [filter, setFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const completedTaskCount = tasks.filter((task) => task.completed).length;
-  const filteredTasks = tasks.filter((task) => {
-    if (filter === 'active') return !task.completed;
-    if (filter === 'completed') return task.completed;
-    return true;
-  });
 
+  const activeCount = tasks.filter((task) => !task.completed).length;
+  const completedTaskCount = tasks.filter((task) => task.completed).length;
+  const normalizedSearchQuery = searchQuery.toLowerCase();
+  const filteredTasks = tasks.filter((task) => {
+    const matchesStatus =
+      filter === 'active'
+        ? !task.completed
+        : filter === 'completed'
+          ? task.completed
+          : true;
+    const matchesSearch = task.text
+      .toLowerCase()
+      .includes(normalizedSearchQuery);
+    return matchesStatus && matchesSearch;
+  });
   useEffect(() => {
     const controller = new AbortController();
 
@@ -47,7 +58,7 @@ function App() {
     return () => controller.abort();
   }, []);
 
-  async function addTask(taskText) {
+  async function addTask(taskText, taskPriority) {
     const text = taskText.trim();
     if (text === '') return false;
 
@@ -55,7 +66,7 @@ function App() {
       const response = await fetch('http://localhost:5000/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, priority: taskPriority }),
       });
       if (!response.ok) {
         throw new Error(`Unable to add task (${response.status})`);
@@ -63,6 +74,7 @@ function App() {
 
       const newTask = await response.json();
       setTasks((currentTasks) => [...currentTasks, newTask]);
+      setPriority('Medium');
       setError('');
       return true;
     } catch (requestError) {
@@ -157,8 +169,21 @@ function App() {
   }
 
   async function clearCompletedTasks() {
-    const completedTasks = tasks.filter((task) => task.completed);
-    await Promise.all(completedTasks.map((task) => deleteTask(task.id)));
+    try {
+      const response = await fetch('http://localhost:5000/api/tasks/completed', {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error(`Unable to clear completed tasks (${response.status})`);
+      }
+
+      setTasks((currentTasks) =>
+        currentTasks.filter((task) => !task.completed),
+      );
+      setError('');
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to clear completed tasks.');
+    }
   }
 
   return (
@@ -173,7 +198,16 @@ function App() {
                 {error}
               </div>
             )}
-            <TaskInput onAddTask={addTask} disabled={loading} />
+            <TaskInput
+              onAddTask={addTask}
+              priority={priority}
+              onPriorityChange={setPriority}
+              disabled={loading}
+            />
+            <p className="text-muted mb-3">
+              <strong>{activeCount}</strong>{' '}
+              {activeCount === 1 ? 'task' : 'tasks'} remaining
+            </p>
             {loading ? (
               <p role="status">Loading tasks...</p>
             ) : (
@@ -181,6 +215,8 @@ function App() {
                 tasks={filteredTasks}
                 filter={filter}
                 onFilterChange={setFilter}
+                searchQuery={searchQuery}
+                onSearchQueryChange={setSearchQuery}
                 onToggleTask={toggleTask}
                 onDeleteTask={deleteTask}
                 onUpdateTaskText={updateTaskText}

@@ -1,6 +1,11 @@
 import { useState } from 'react';
 
-function TaskInput({ onAddTask, disabled = false }) {
+function TaskInput({
+  onAddTask,
+  priority,
+  onPriorityChange,
+  disabled = false,
+}) {
   const [newTask, setNewTask] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -12,7 +17,7 @@ function TaskInput({ onAddTask, disabled = false }) {
 
     setSubmitting(true);
     try {
-      if (await onAddTask(taskText)) {
+      if (await onAddTask(taskText, priority)) {
         setNewTask('');
       }
     } finally {
@@ -43,6 +48,20 @@ function TaskInput({ onAddTask, disabled = false }) {
           Add Task
         </button>
       </div>
+      <label htmlFor="task-priority" className="form-label mt-3">
+        Priority
+      </label>
+      <select
+        id="task-priority"
+        className="form-select"
+        value={priority}
+        onChange={(event) => onPriorityChange(event.target.value)}
+        disabled={disabled || submitting}
+      >
+        <option value="High">High Priority</option>
+        <option value="Medium">Medium Priority</option>
+        <option value="Low">Low Priority</option>
+      </select>
     </form>
   );
 }
