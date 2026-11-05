@@ -22,6 +22,11 @@ function TaskList({
   tasks,
   filter,
   onFilterChange,
+  sortBy,
+  onSortChange,
+  categoryFilter,
+  onCategoryFilterChange,
+  categories,
   searchQuery,
   onSearchQueryChange,
   onToggleTask,
@@ -30,6 +35,7 @@ function TaskList({
   onClearCompleted,
   totalTaskCount,
   completedTaskCount,
+  today,
 }) {
   const [editingId, setEditingId] = useState(null);
   const [editedText, setEditedText] = useState('');
@@ -62,34 +68,68 @@ function TaskList({
         onChange={(event) => onSearchQueryChange(event.target.value)}
         placeholder="Search by task name"
       />
-      <div className="btn-group mb-3" role="group" aria-label="Filter tasks">
-        {filters.map(({ value, label }) => (
-          <button
-            key={value}
-            type="button"
-            className={`btn ${
-              filter === value ? 'btn-primary' : 'btn-outline-primary'
-            }`}
-            aria-pressed={filter === value}
-            onClick={() => onFilterChange(value)}
+      <div className="task-controls">
+        <div className="task-status-filters mb-3" role="group" aria-label="Filter tasks">
+          {filters.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              className={`btn ${
+                filter === value ? 'btn-primary' : 'btn-outline-primary'
+              }`}
+              aria-pressed={filter === value}
+              onClick={() => onFilterChange(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="category-filters mb-3" role="group" aria-label="Filter by category">
+          {['all', ...categories].map((category) => (
+            <button
+              key={category}
+              type="button"
+              className={`btn btn-sm ${
+                categoryFilter === category
+                  ? 'btn-secondary'
+                  : 'btn-outline-secondary'
+              }`}
+              aria-pressed={categoryFilter === category}
+              onClick={() => onCategoryFilterChange(category)}
+            >
+              {category === 'all' ? 'All categories' : category}
+            </button>
+          ))}
+        </div>
+        <div className="task-sort-control">
+          <label htmlFor="task-sort" className="form-label mb-0">
+            Sort by
+          </label>
+          <select
+            id="task-sort"
+            className="form-select form-select-sm"
+            value={sortBy}
+            onChange={(event) => onSortChange(event.target.value)}
           >
-            {label}
+            <option value="default">Added order</option>
+            <option value="dueDate">Due date (closest first)</option>
+            <option value="priority">Priority (high to low)</option>
+          </select>
+        </div>
+        <div className="task-summary-bar">
+          <small className="text-muted" aria-live="polite">
+            {totalTaskCount - completedTaskCount} active · {completedTaskCount}{' '}
+            completed
+          </small>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm clear-completed-button"
+            onClick={onClearCompleted}
+            disabled={completedTaskCount === 0}
+          >
+            Clear Completed
           </button>
-        ))}
-      </div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <small className="text-muted" aria-live="polite">
-          {totalTaskCount - completedTaskCount} active · {completedTaskCount}{' '}
-          completed
-        </small>
-        <button
-          type="button"
-          className="btn btn-outline-secondary btn-sm"
-          onClick={onClearCompleted}
-          disabled={completedTaskCount === 0}
-        >
-          Clear Completed
-        </button>
+        </div>
       </div>
       <ul className="list-group">
         {tasks.length === 0 ? (
@@ -100,9 +140,9 @@ function TaskList({
           tasks.map((task) => (
             <li
               key={task.id}
-              className="list-group-item d-flex justify-content-between align-items-center"
+              className="list-group-item task-list-item"
             >
-              <div className="task-content d-grid align-items-center gap-2 flex-grow-1 me-2">
+              <div className="task-content">
                 <input
                   type="checkbox"
                   className="form-check-input me-2"
@@ -127,23 +167,43 @@ function TaskList({
                     />
                   </form>
                 ) : (
-                  <>
+                  <div className="task-details">
                     <span
                       className={
                         task.completed
-                          ? 'text-muted text-decoration-line-through'
-                          : ''
+                            ? 'task-text is-completed'
+                            : 'task-text'
                       }
                     >
                       {task.text}
                     </span>
-                    <span className={getBadgeClass(task.priority)}>
-                      {task.priority || 'Medium'}
-                    </span>
-                  </>
+                    <div className="task-meta d-flex flex-wrap gap-2 mt-2">
+                      <span className={getBadgeClass(task.priority)}>
+                        {task.priority || 'Medium'}
+                      </span>
+                      <span className="badge bg-secondary">
+                        {task.category || 'Personal'}
+                      </span>
+                      {task.due_date && (
+                        <time
+                          className={`badge ${
+                            !task.completed && task.due_date < today
+                              ? 'bg-danger'
+                              : 'bg-light text-dark due-date-badge'
+                          }`}
+                          dateTime={task.due_date}
+                        >
+                          Due {task.due_date}
+                          {!task.completed && task.due_date < today
+                            ? ' · Overdue'
+                            : ''}
+                        </time>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
-              <div className="d-flex gap-2">
+              <div className="task-actions">
                 {editingId === task.id ? (
                   <button
                     type="button"

@@ -1,70 +1,74 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+
+const quotes = [
+  {
+    content: 'Wonder is the beginning of wisdom.',
+    reference: 'Socrates',
+  },
+  {
+    content:
+      'It is not enough to have a good mind; the main thing is to use it well.',
+    reference: 'René Descartes',
+  },
+  {
+    content: 'An investment in knowledge pays the best interest.',
+    reference: 'Benjamin Franklin',
+  },
+  {
+    content: 'The important thing is not to stop questioning.',
+    reference: 'Albert Einstein',
+  },
+  {
+    content:
+      'Nothing in life is to be feared; it is only to be understood.',
+    reference: 'Marie Curie',
+  },
+  {
+    content: 'The beginning of wisdom is the definition of terms.',
+    reference: 'Socrates',
+  },
+  {
+    content:
+      'Reading furnishes the mind only with materials of knowledge; thinking makes what we read our own.',
+    reference: 'John Locke',
+  },
+];
+
+function getNextQuote(currentQuote) {
+  const currentIndex = quotes.indexOf(currentQuote);
+  let nextIndex = Math.floor(Math.random() * quotes.length);
+
+  while (quotes.length > 1 && nextIndex === currentIndex) {
+    nextIndex = Math.floor(Math.random() * quotes.length);
+  }
+
+  return quotes[nextIndex];
+}
 
 function QuoteBox() {
-  const [quote, setQuote] = useState({ content: 'Loading...', author: '' });
-  const [isLoading, setIsLoading] = useState(true);
-  const controllerRef = useRef(null);
-
-  const fetchQuote = useCallback(async (signal) => {
-    try {
-      const response = await fetch('https://dummyjson.com/quotes/random', {
-        signal,
-      });
-      if (!response.ok) {
-        throw new Error(`Quote request failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-      if (typeof data.quote !== 'string' || typeof data.author !== 'string') {
-        throw new Error('Quote response was not in the expected format');
-      }
-
-      if (!signal?.aborted) {
-        setQuote({ content: data.quote, author: data.author });
-      }
-    } catch (error) {
-      if (error.name === 'AbortError') return;
-
-      console.error('Failed to load daily quote:', error);
-      setQuote({ content: "Today's quote could not be loaded.", author: '' });
-    } finally {
-      if (!signal?.aborted) setIsLoading(false);
-    }
-  }, []);
+  const [quote, setQuote] = useState(
+    () => quotes[Math.floor(Math.random() * quotes.length)],
+  );
 
   useEffect(() => {
-    const controller = new AbortController();
-    controllerRef.current = controller;
-
-    void Promise.resolve().then(() => fetchQuote(controller.signal));
     const intervalId = setInterval(() => {
-      void fetchQuote(controller.signal);
+      setQuote((currentQuote) => getNextQuote(currentQuote));
     }, 60000);
 
-    return () => {
-      clearInterval(intervalId);
-      controller.abort();
-      if (controllerRef.current === controller) controllerRef.current = null;
-    };
-  }, [fetchQuote]);
-
-  function handleNewQuote() {
-    setIsLoading(true);
-    void fetchQuote(controllerRef.current?.signal);
-  }
+    return () => clearInterval(intervalId);
+  }, []);
 
   return (
     <div className="alert alert-info text-center mb-4" role="status">
       <p className="mb-1">“{quote.content}”</p>
-      {quote.author && <small>— {quote.author}</small>}
+      <small>— {quote.reference}</small>
       <div>
         <button
           type="button"
           className="btn btn-outline-primary btn-sm mt-2"
-          onClick={handleNewQuote}
-          disabled={isLoading}
+          onClick={() => setQuote((currentQuote) => getNextQuote(currentQuote))}
         >
-          {isLoading ? 'Loading...' : 'New Quote'}
+          New Quote
         </button>
       </div>
     </div>
